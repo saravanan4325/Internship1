@@ -1,0 +1,117 @@
+import os
+import json
+from datetime import datetime
+
+DATA_FILE = 'budget_data.json'
+
+class Transaction:
+    def __init__(self, amount, category, date=None):
+        self.amount = amount
+        self.category = category
+        self.date = date if date else datetime.now().strftime("%Y-%m-%d")
+
+    def to_dict(self):
+        return {
+            'amount': self.amount,
+            'category': self.category,
+            'date': self.date
+        }
+
+    @staticmethod
+    def from_dict(transaction_dict):
+        return Transaction(
+            transaction_dict['amount'],
+            transaction_dict['category'],
+            transaction_dict.get('date')
+        )
+
+class BudgetTracker:
+    def __init__(self):
+        self.income = []
+        self.expenses = []
+        self.load_data()
+
+    def add_income(self, income):
+        self.income.append(income)
+        self.save_data()
+
+    def add_expense(self, expense):
+        self.expenses.append(expense)
+        self.save_data()
+
+    def calculate_budget(self):
+        total_income = sum(inc.amount for inc in self.income)
+        total_expenses = sum(exp.amount for exp in self.expenses)
+        return total_income - total_expenses
+
+    def analyze_expenses(self):
+        expense_summary = {}
+        for expense in self.expenses:
+            if expense.category not in expense_summary:
+                expense_summary[expense.category] = 0
+            expense_summary[expense.category] += expense.amount
+        return expense_summary
+
+    def save_data(self):
+        data = {
+            'income': [inc.to_dict() for inc in self.income],
+            'expenses': [exp.to_dict() for exp in self.expenses]
+        }
+        with open(DATA_FILE, 'w') as file:
+            json.dump(data, file, indent=4)
+
+    def load_data(self):
+        if os.path.exists(DATA_FILE):
+            with open(DATA_FILE, 'r') as file:
+                data = json.load(file)
+                self.income = [Transaction.from_dict(inc) for inc in data['income']]
+                self.expenses = [Transaction.from_dict(exp) for exp in data['expenses']]
+
+    def display_summary(self):
+        print("\nBudget Summary:")
+        print(f"Total Income: {sum(inc.amount for inc in self.income):.2f}")
+        print(f"Total Expenses: {sum(exp.amount for exp in self.expenses):.2f}")
+        print(f"Remaining Budget: {self.calculate_budget():.2f}")
+
+        expense_analysis = self.analyze_expenses()
+        print("\nExpense Analysis by Category:")
+        for category, total in expense_analysis.items():
+            print(f"{category}: {total:.2f}")
+
+def main():
+    tracker = BudgetTracker()
+
+    while True:
+        print("\nBudget Tracker:")
+        tracker.display_summary()
+
+        print("\nOptions:")
+        print("1. Add Income")
+        print("2. Add Expense")
+        print("3. Exit")
+
+        choice = input("Choose an option: ")
+
+        if choice == '1':
+            try:
+                amount = float(input("Enter income amount: "))
+                category = input("Enter income category: ")
+                income = Transaction(amount, category)
+                tracker.add_income(income)
+            except ValueError:
+                print("Invalid amount. Please enter a number.")
+        elif choice == '2':
+            try:
+                amount = float(input("Enter expense amount: "))
+                category = input("Enter expense category: ")
+                expense = Transaction(amount, category)
+                tracker.add_expense(expense)
+            except ValueError:
+                print("Invalid amount. Please enter a number.")
+        elif choice == '3':
+            break
+        else:
+            print("Invalid option, please try again.")
+
+if __name__ == "__main__":
+    main()
